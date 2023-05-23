@@ -39,23 +39,16 @@ app.ws('/*', {
         console.log("§ id: ", ws.id)
     },
     message: (ws, message, isBinary) => {
-        console.log("%: id:", ws.id)
         const messageObj = JSON.parse(Buffer.from(message).toString())
         if (messageObj.topic === 'verify') {
             const recoveredAddress = recoverAddress(messageObj.data.signature, "\x19Ethereum Signed Message:\n" + "2" + "mc")
-            console.log('recoveredAddress:', recoveredAddress)
-            // if (!verifiedClients.find(client => client.address === recoveredAddress)) {
             verifiedClients.push({
                 id: ws.id,
                 address: recoveredAddress
             })
             pushToAll({ topic: "verifiedClients", verifiedClients: verifiedClients })
-            // }
         } else if (messageObj.topic === 'MousePosition') {
-            console.log("messageObj", messageObj);
-            console.log("ws", ws);
             const newMessage = { topic: "MousePosition", address: verifiedClients.find(client => client.id == ws.id)?.address, ...messageObj.data };
-            console.log('newMessage', newMessage);
             ws.publish('MouseBroadcast', JSON.stringify(newMessage), isBinary);
 
         } else {

@@ -66,7 +66,7 @@ app.ws('/*', {
             // ws.publish('broadcast', message, isBinary);
         }
     },
-    close: (ws, _, _) => {
+    close: (ws, code, message) => {
         clients = clients.filter(client => client !== ws);
         verifiedClients = verifiedClients.filter(client => client.id !== ws.id);
         pushToAll({ topic: "verifiedClients", verifiedClients: verifiedClients })

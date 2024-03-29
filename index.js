@@ -1,21 +1,35 @@
-/* Simple pub/sub broadcasting example */
 const { v4: uuidv4 } = require('uuid');
 const uWS = require('uWebSockets.js');
-const web3 = require('web3');
 const ethereumjsUtil = require('ethereumjs-util');
+const { keccak256 } = require('js-sha3');
+
 const app = uWS.App();
 
 const port = 9001;
 let clients = [];
 let verifiedClients = []
 
+// Function to recover the Ethereum address from a given signature and message
 function recoverAddress(signature, message) {
-    const messageHash = ethereumjsUtil.toBuffer(web3.utils.sha3(message));
+    // Convert the message to a Keccak-256 hash
+    const messageHash = new Uint8Array(keccak256.buffer(message));
+
+    // Decompose the given signature into its components: v, r, and s
     const { v, r, s } = ethereumjsUtil.fromRpcSig(signature);
+
+    // Recover the public key from the message hash and signature components
     const pub = ethereumjsUtil.ecrecover(messageHash, v, r, s);
+
+    // Convert the recovered public key to an Ethereum address
     const addrBuf = ethereumjsUtil.pubToAddress(pub);
+
+    // Convert the address from a buffer to a hex string format
     const recoveredAddress = ethereumjsUtil.bufferToHex(addrBuf);
-    return recoveredAddress
+
+    console.log('Recovered address:', recoveredAddress)
+
+    // Return the recovered Ethereum address as a hex string
+    return recoveredAddress;
 }
 
 function pushToAll(data) {
@@ -32,7 +46,6 @@ app.ws('/*', {
 
     /* Handlers */
     open: (ws) => {
-        ws.subscribe('MouseBroadcast');
         ws.subscribe('broadcast');
         ws.id = uuidv4();
         clients.push(ws);
@@ -47,10 +60,6 @@ app.ws('/*', {
                 address: recoveredAddress
             })
             pushToAll({ topic: "verifiedClients", verifiedClients: verifiedClients })
-        } else if (messageObj.topic === 'MousePosition') {
-            const newMessage = { topic: "MousePosition", address: verifiedClients.find(client => client.id == ws.id)?.address, ...messageObj.data };
-            ws.publish('MouseBroadcast', JSON.stringify(newMessage), isBinary);
-
         } else {
             ws.publish('broadcast', message, isBinary);
         }

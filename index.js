@@ -53,6 +53,7 @@ app.ws('/*', {
     },
     message: (ws, message, isBinary) => {
         const messageObj = JSON.parse(Buffer.from(message).toString())
+
         if (messageObj.topic === 'verify') {
             const recoveredAddress = recoverAddress(messageObj.data.signature, "\x19Ethereum Signed Message:\n" + "2" + "mc")
             verifiedClients.push({
@@ -61,10 +62,11 @@ app.ws('/*', {
             })
             pushToAll({ topic: "verifiedClients", verifiedClients: verifiedClients })
         } else {
-            ws.publish('broadcast', message, isBinary);
+            pushToAll({ topic: "chat", data: messageObj.data })
+            // ws.publish('broadcast', message, isBinary);
         }
     },
-    close: (ws, code, message) => {
+    close: (ws, _, _) => {
         clients = clients.filter(client => client !== ws);
         verifiedClients = verifiedClients.filter(client => client.id !== ws.id);
         pushToAll({ topic: "verifiedClients", verifiedClients: verifiedClients })

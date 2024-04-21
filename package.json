@@ -6,6 +6,7 @@
   "dependencies": {
     "ethereumjs-util": "^7.1.5",
     "js-sha3": "^0.9.3",
+    "sqlite3": "^5.1.7",
     "uWebSockets.js": "uNetworking/uWebSockets.js#v20.43.0",
     "uuid": "^9.0.1"
   }

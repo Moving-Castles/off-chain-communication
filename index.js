@@ -23,7 +23,6 @@ db.run(`
         world TEXT,
         timestamp INTEGER,
         address TEXT,
-        name TEXT,
         message TEXT
     )
 `);
@@ -46,7 +45,7 @@ function pushToAll(data) {
 
 function sendRecentMessages(ws) {
     db.all(`
-        SELECT id, world, timestamp, address, name, message 
+        SELECT id, world, timestamp, address, message 
         FROM messages 
         ORDER BY timestamp DESC 
         LIMIT 20
@@ -59,6 +58,22 @@ function sendRecentMessages(ws) {
             ws.send(JSON.stringify({ topic: "chat", data: row }));
         });
     });
+}
+
+function redactMessage(message) {
+    // 5% chance to redact the whole message
+    if (Math.random() < 0.05) {
+        return "MESSAGE IN VIOLATION OF TCM LIMITED FREE SPEECH POLICY. TACTICAL SUPPORT TEAM HAS BEEN ALERTED.";
+    }
+
+    // 10% chance to redact words
+    const words = message.split(' ');
+    for (let i = 0; i < words.length; i++) {
+        if (Math.random() < 0.1) {
+            words[i] = words[i].replace(/./g, '█');
+        }
+    }
+    return words.join(' ');
 }
 
 app.ws('/*', {
@@ -85,16 +100,23 @@ app.ws('/*', {
             });
             pushToAll({ topic: "verifiedClients", verifiedClients: verifiedClients });
         } else {
+
+            const processedMessage = redactMessage(messageObj.data.message)
+
             db.run(`
-                INSERT INTO messages (id, world, timestamp, address, name, message) 
-                VALUES (?, ?, ?, ?, ?, ?)
-            `, [messageObj.data.id, messageObj.data.world, messageObj.data.timestamp, messageObj.data.address, messageObj.data.name, messageObj.data.message], function (err) {
+                INSERT INTO messages (id, world, timestamp, address, message) 
+                VALUES (?, ?, ?, ?, ?)
+            `, [messageObj.data.id, messageObj.data.world, messageObj.data.timestamp, messageObj.data.address, processedMessage], function (err) {
                 if (err) {
                     return console.log(err.message);
                 }
                 console.log(`A row has been inserted with rowid ${this.lastID}`);
             });
-            pushToAll({ topic: "chat", data: messageObj.data });
+
+            const returnMessageData = JSON.parse(JSON.stringify(messageObj.data));
+            returnMessageData.message = processedMessage;
+
+            pushToAll({ topic: "chat", data: returnMessageData });
         }
     },
 
